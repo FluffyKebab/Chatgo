@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+
+<html>
+    <head>
+        <style>
+            body {
+                margin: 0px;
+
+                background-color: #eee;
+            }
+
+            .top {
+                position: fixed;
+                top: 0;
+ 
+                width: 100vw;
+                
+                display: block;
+                background-color: #fff ; 
+                padding: 10px;   
+
+                border-bottom: 2px solid #a8a8a8;                        
+            }
+
+            .block {
+                width: 50vw;
+                
+                display: block;
+                background-color: #fff;
+
+                margin-left: 8vw;
+                margin-bottom: 1vw;
+                
+
+                padding: 20px;
+
+                border-radius: 20px;
+            }
+            
+            a {
+                text-decoration: none;
+                color: rgb(0, 0, 0);
+            }
+        </style>
+    </head>
+
+    <body style="font-family: Verdana, Geneva, Helvetica, sans-serif; ">
+        <div class="top">
+            <a href="/">
+                <span style="margin-right: 5vw; font-size: x-large;">Chatgo!</span>
+            </a>
+
+            <span style="margin-right: 5vw; font-size: x-large;">Her er de nyeste chattene</span>
+        </div>
+
+        <br>
+        <br>
+        <br>
+        <br>
+
+        {{ range .Chats}}
+
+        <a href="/chat?c={{ .ChatName }}">
+            <div class="block">
+                <h2> {{ .ChatName }}</h2>
+                <p> {{ .ChatDiscription }}</p>
+             </div>
+        </a>
+
+        {{ end }}
+
+        <script>
+            window.scroll({
+                top: document.body.scrollHeight, 
+                left: 0, 
+            });
+        </script>
+
+    </body>
+</html>

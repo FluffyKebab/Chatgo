@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+
+<html>
+    <head>
+        <title>Search</title>
+
+        <style>
+            body {
+                margin: 0px;
+                background-color: #eee;
+            }
+
+            .top {
+                position: fixed;
+                top: 0;
+
+                width: 100vw;
+               
+                display: block;
+                background-color: #fff ; 
+                border-bottom: 2px solid #a8a8a8;    
+                padding: 10px;          
+            }
+
+            .block {
+                width: 50vw;
+                
+                display: block;
+                background-color: #fff;
+
+                margin-left: 8vw;
+                margin-bottom: 1vw;
+                
+
+                padding: 20px;
+
+                border-radius: 20px;
+            }
+            
+            a {
+                text-decoration: none;
+                color: rgb(0, 0, 0);
+            }
+        </style>
+    </head>
+
+    <body style="font-family: Verdana, Geneva, Helvetica, sans-serif; ">
+
+        <div class="top">
+            <form style="margin: 0; padding: 0;" action="/search" method="GET">
+                    
+                <a href="/">
+                    <span style="margin-right: 5vw; font-size: x-large;">Chatgo!</span>
+                </a>
+                
+                <input type="text" name="s" placeholder="Search Chats.." style="padding-top: 10px; padding-bottom: 10px; padding-left: 5px; padding-right: 100px; border-radius: 5px; border: 1px solid #a8a8a8;">
+                
+            </form>
+        </div>
+
+        <br>
+        <br>
+        <br>
+        <br>
+
+        <div class="block">
+            Fant {{ .NumRes }} resultater for {{ .SearchTerm }}
+        </div>
+
+
+        {{ range .Chats}}
+
+        <a href="/chat?c={{ .ChatName }}">
+            <div class="block">
+                <h2> {{ .ChatName }}</h2>
+                <p> {{ .ChatDiscription }}</p>
+             </div>
+        </a>
+
+        {{ end }}
+    </body>
+
+</html>
