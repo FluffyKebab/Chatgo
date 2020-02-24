@@ -770,7 +770,7 @@ func main() {
 	mux.HandleFunc("/search", search)
 	mux.HandleFunc("/newestchat", newestPage)
 
-	err = http.ListenAndServe(":80", mux)
+	err = http.ListenAndServe(":8080", mux)
 	if err != nil {
 		panic(err.Error())
 	}
