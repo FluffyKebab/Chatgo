@@ -770,5 +770,5 @@ func main() {
 	mux.HandleFunc("/search", search)
 	mux.HandleFunc("/newestchat", newestPage)
 
-	http.ListenAndServe(":8080", mux)
+	http.ListenAndServe(":80", mux)
 }
