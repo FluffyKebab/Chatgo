@@ -204,6 +204,11 @@
                             addPost(cssClass, post, user)
                         }
 
+                        if (lastJsonResp == null) {
+                            window.scrollTo(0, document.body.scrollHeight);
+
+                        }
+
                         lastJsonResp = JsonResp;
 
                     }
@@ -271,8 +276,9 @@
 
             window.onload=toBottom;
             function toBottom(){
-                console.log("ferdig å laste inn")
+                console.log("ferdig å laste inn, nå skall den skrolle")
                 window.scrollTo(0, document.body.scrollHeight);
+                console.log("har skrollet ferdig")
             }
 
             window.onerror=toBottom;
