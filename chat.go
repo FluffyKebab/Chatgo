@@ -3,13 +3,17 @@ package main
 import (
 	"crypto/sha1"
 	"database/sql"
+	"encoding/json"
 	"fmt"
-	"github.com/beevik/guid"
-	_ "github.com/mattn/go-sqlite3"
+	"html"
 	"html/template"
 	"net/http"
+	"regexp"
 	"strings"
 	"time"
+
+	"github.com/beevik/guid"
+	_ "github.com/mattn/go-sqlite3"
 )
 
 //DATABASE
@@ -142,9 +146,6 @@ func EditChats(chatname, username string, add bool) {
 		newChats = strings.Replace(oldChats, "#"+chatname, "", -1)
 	}
 
-	fmt.Println("old chats: " + oldChats)
-	fmt.Println("new chats: " + newChats)
-
 	_, err = db.Exec("UPDATE users SET userschats = ? WHERE username = ?", newChats, username)
 	if err != nil {
 		panic(err.Error())
@@ -158,18 +159,27 @@ func hash(s string) []byte {
 }
 
 //LOGIN, SIGNUP, NEWCHAT OG NEWPOST
-func Signup(pass, username, guid string) bool {
+func Signup(pass, username, guid string) string {
+
+	match, err := regexp.MatchString("[a-zA-Z ]*", username)
+	if err != nil {
+		panic(err.Error())
+	}
+
+	fmt.Println(match)
+
+	if match == false {
+		return "Kan bare bruke bokstaver og tall som brukernavn"
+	}
 
 	row := db.QueryRow("SELECT * FROM users WHERE username = ?", username)
 	var user User
-	err := row.Scan(&user.ID, &user.Pass, &user.Username, &user.UsersChats, &user.CookieVal)
+	err = row.Scan(&user.ID, &user.Pass, &user.Username, &user.UsersChats, &user.CookieVal)
 
 	if err != nil {
 		if err == sql.ErrNoRows {
 
 			pass = string(hash(pass))
-
-			fmt.Println(pass)
 
 			_, err = db.Exec(`INSERT INTO users (pass, username, cookieval, userschats) VALUES (?, ?, ?, "");`, pass, username, guid)
 			if err != nil {
@@ -181,13 +191,13 @@ func Signup(pass, username, guid string) bool {
 				panic(err.Error())
 			}
 
-			return true
+			return ""
 		}
 
 		panic(err.Error())
 	}
 
-	return false
+	return "brukernavn opptat"
 }
 
 func Login(pass string, username string) bool {
@@ -243,6 +253,10 @@ func NewChat(ChatName string, ChatDescription string) (bool, string) {
 }
 
 func NewPost(chatname, user, post string) {
+
+	user = html.EscapeString(user)
+	post = html.EscapeString(post)
+
 	_, err := db.Exec(`INSERT INTO allmessages (chat, user, message) VALUES (?, ?, ?)`, chatname, user, post)
 	if err != nil {
 		panic(err.Error())
@@ -251,8 +265,6 @@ func NewPost(chatname, user, post string) {
 
 //HANDLERS
 func indexPage(w http.ResponseWriter, r *http.Request) {
-
-	fmt.Println("Index Page")
 
 	if r.URL.Path != "/" {
 		http.Error(w, "404 not found.", http.StatusNotFound)
@@ -280,10 +292,6 @@ func indexPage(w http.ResponseWriter, r *http.Request) {
 
 		userschatsSlice := strings.Split(userschats, "#")
 
-		fmt.Println(userschatsSlice)
-
-		fmt.Println(len(userschatsSlice))
-
 		if len(userschatsSlice) <= 1 {
 
 			var chatInfo ChatInfo
@@ -292,8 +300,6 @@ func indexPage(w http.ResponseWriter, r *http.Request) {
 			chatInfo.CssClass = "block"
 
 			indexPage.Chats = append(indexPage.Chats, chatInfo)
-
-			fmt.Println(indexPage)
 
 			t.Execute(w, indexPage)
 			return
@@ -322,8 +328,6 @@ func indexPage(w http.ResponseWriter, r *http.Request) {
 			indexPage.Chats = append(indexPage.Chats, chatInfo)
 		}
 
-		fmt.Println(indexPage)
-
 		t.Execute(w, indexPage)
 	}
 
@@ -339,8 +343,6 @@ func indexPage(w http.ResponseWriter, r *http.Request) {
 }
 
 func loginPage(w http.ResponseWriter, r *http.Request) {
-
-	fmt.Println("Login page")
 
 	if IfLogedIn(r) == true {
 		http.Redirect(w, r, "./", 301)
@@ -366,7 +368,6 @@ func loginPage(w http.ResponseWriter, r *http.Request) {
 		result := Login(password, username)
 
 		if result == false {
-			fmt.Println("du feil passord")
 
 			t, err := template.ParseFiles("src/login.html")
 			if err != nil {
@@ -383,8 +384,6 @@ func loginPage(w http.ResponseWriter, r *http.Request) {
 
 			return
 		}
-
-		fmt.Println("yay du kom inn")
 
 		var user User
 
@@ -413,8 +412,6 @@ func loginPage(w http.ResponseWriter, r *http.Request) {
 
 func signupPage(w http.ResponseWriter, r *http.Request) {
 
-	fmt.Println("Signing up page")
-
 	if IfLogedIn(r) == true {
 		http.Redirect(w, r, "./", 301)
 		return
@@ -437,9 +434,11 @@ func signupPage(w http.ResponseWriter, r *http.Request) {
 
 		guid := fmt.Sprintf(guid.New().String())
 
-		sucseful := Signup(password, username, guid)
+		result := Signup(password, username, guid)
 
-		if sucseful == false {
+		fmt.Println(result)
+
+		if result != "" {
 
 			t, err := template.ParseFiles("src/signup.html")
 			if err != nil {
@@ -449,7 +448,7 @@ func signupPage(w http.ResponseWriter, r *http.Request) {
 			ItemsErr := struct {
 				Error string
 			}{
-				Error: "brukernavn opptat",
+				Error: result,
 			}
 
 			t.Execute(w, ItemsErr)
@@ -522,8 +521,6 @@ func newChatPage(w http.ResponseWriter, r *http.Request) {
 
 func chatPage(w http.ResponseWriter, r *http.Request) {
 
-	fmt.Println("Velkomen til THE CHATPAGE")
-
 	if IfLogedIn(r) == false {
 		http.Redirect(w, r, "./", 301)
 		return
@@ -549,7 +546,6 @@ func chatPage(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 
-			fmt.Println("HVAAA")
 			panic(err.Error())
 		}
 
@@ -565,32 +561,6 @@ func chatPage(w http.ResponseWriter, r *http.Request) {
 			page.Status = "Leave Chat"
 		} else {
 			page.Status = "Join Chat"
-		}
-
-		rows, err := db.Query("SELECT * FROM allmessages WHERE chat = ?", chatname)
-		if err != nil {
-			panic(err.Error())
-		}
-
-		username := GetUsername(r)
-
-		for rows.Next() {
-			var item Comment
-
-			var messages AllMessages
-			rows.Scan(&messages.ID, &messages.Message, &messages.User, &messages.Chat)
-
-			item.Message = messages.Message
-			item.Username = messages.User
-
-			if username == messages.User {
-				item.CssClass = "message-your"
-			} else {
-				item.CssClass = "message-other"
-			}
-
-			page.Messeges = append(page.Messeges, item)
-
 		}
 
 		t.Execute(w, page)
@@ -618,16 +588,12 @@ func chatPost(w http.ResponseWriter, r *http.Request) {
 
 	chatnames, ok := r.URL.Query()["c"]
 	if !ok || len(chatnames[0]) < 1 {
-		fmt.Println("FANT IKKE")
-
 		return
 	}
 
 	chatname := chatnames[0]
 
 	if r.Method == "POST" {
-
-		fmt.Println("NÅ ble det sent en post til chatte greia")
 
 		r.ParseForm()
 
@@ -641,6 +607,55 @@ func chatPost(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func getPostPage(w http.ResponseWriter, r *http.Request) {
+
+	//får brukernavnet
+	username := GetUsername(r)
+
+	//får chat navnet
+	chatnames, ok := r.URL.Query()["c"]
+	if !ok || len(chatnames[0]) < 1 {
+		http.Redirect(w, r, "./", 301)
+		return
+	}
+	chatname := chatnames[0]
+
+	//finner alle melingene fra chaten
+	rows, err := db.Query("SELECT * FROM allmessages WHERE chat = ?", chatname)
+	if err != nil {
+		panic(err.Error())
+	}
+
+	//formaterer melingene til json
+	AllMess := make([]Comment, 0)
+
+	for rows.Next() {
+		var mess Comment
+		var messages AllMessages
+
+		rows.Scan(&messages.ID, &messages.Message, &messages.User, &messages.Chat)
+		mess.Message = messages.Message
+		mess.Username = messages.User
+
+		if username == messages.User {
+			mess.CssClass = "message-your"
+		} else {
+			mess.CssClass = "message-other"
+		}
+
+		AllMess = append(AllMess, mess)
+	}
+
+	jsonData, err := json.Marshal(AllMess)
+	if err != nil {
+		panic(err.Error())
+	}
+
+	//sender json
+	w.Header().Set("Content-Type", "application/json")
+	w.Write(jsonData)
+}
+
 func search(w http.ResponseWriter, r *http.Request) {
 
 	if IfLogedIn(r) == false {
@@ -650,7 +665,6 @@ func search(w http.ResponseWriter, r *http.Request) {
 
 	searchTerms, ok := r.URL.Query()["s"]
 	if !ok || len(searchTerms[0]) < 1 {
-		fmt.Println("FANT IKKE")
 		http.Redirect(w, r, r.Header.Get("Referer"), 302)
 		return
 	}
@@ -689,15 +703,10 @@ func search(w http.ResponseWriter, r *http.Request) {
 
 func newestPage(w http.ResponseWriter, r *http.Request) {
 
-	fmt.Println("NEWEST page")
-
 	if IfLogedIn(r) == false {
 		http.Redirect(w, r, "./", 301)
-		fmt.Println("KSKS")
 		return
 	}
-
-	fmt.Println("joa")
 
 	t, err := template.ParseFiles("src/newest.html")
 	if err != nil {
@@ -757,7 +766,7 @@ func main() {
 		panic(err.Error())
 	}
 
-	fmt.Println("")
+	fmt.Println("kjører...")
 
 	mux := http.NewServeMux()
 
@@ -766,6 +775,7 @@ func main() {
 	mux.HandleFunc("/signups", signupPage)
 	mux.HandleFunc("/new", newChatPage)
 	mux.HandleFunc("/chat", chatPage)
+	mux.HandleFunc("/chat.json", getPostPage)
 	mux.HandleFunc("/chatPost", chatPost)
 	mux.HandleFunc("/search", search)
 	mux.HandleFunc("/newestchat", newestPage)

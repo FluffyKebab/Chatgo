@@ -37,6 +37,9 @@
                 border: 2px solid #a8a8a8;
                 border-radius: 4px;
                 margin-right: 40%;
+
+                overflow-wrap: break-word;
+
             }
 
 
@@ -47,19 +50,21 @@
 
                 border: 2px solid #a8a8a8;
                 border-radius: 4px;
-                margin-left: 40%;
-
+                margin-left: 40vw;
                 text-align: right;
+
+                overflow-wrap: break-word;
+
             }
 
             .name {
                 font-size: small;
+                color: rgb(65, 65, 65);
                 margin-bottom: 10px;
             }
 
             body {
                 margin: 0px;
-
                 background-color: #eee;
             }
 
@@ -94,11 +99,20 @@
             a {
                 text-decoration: none;
                 color: rgb(0, 0, 0);
+                border-bottom: 2px solid black;
+                padding-bottom: 3px;
             }
 
             a:hover {
                 background-color: rgb(229, 234, 234);
             }
+
+            img {
+                max-width: 100%;
+                height: auto;
+                max-height: 95vh;
+            }
+
         </style>
     </head>
 
@@ -109,7 +123,7 @@
             <form style="margin: 0; padding: 0;" action="/chat?c={{ .ChatName }}" method="POST">
                 
                 <a href="/" style="margin-right: 5vw; font-size: x-large; padding-right: 0px;">
-                    <span>Chatgo!</span>
+                    Chatgo!
                 </a>
 
                 <span style="margin-right: 5vw; font-size: x-large;">{{ .ChatName }}</span>
@@ -124,26 +138,17 @@
         <br>
         <br>
 
-        {{range .Messeges}}
+        <div id="AllMessages"></div>
 
-
+        <br>
+        <br>
+        <br>
+        <br>
+        <br>
+        <br>
+        <br>    
         
-        <div class=" {{ .CssClass }} ">
-            <div class="name">{{ .Username }}</div>
-                
-            {{ .Message }}
-                
-        </div>
-        
-        {{end}}
-
-        <br>
-        <br>
-        <br>
-        <br>
-        <br>
-        <br>
-        <br>
+        <div id="bottom"></div>
 
         <div class="footer">
 
@@ -155,10 +160,123 @@
         </div>
 
         <script>
-            window.scroll({
-                top: document.body.scrollHeight, 
-                left: 0, 
-            });
+
+            var lastJsonResp;
+
+            function loadMess(){
+    
+                //får chatnavn
+                var curentUrl = new URL(document.URL);
+                var chat = curentUrl.searchParams.get("c");
+
+                //får json
+                var url = "/chat.json?c=" + chat;
+
+                var request = new XMLHttpRequest();
+                request.open("GET", url);
+                request.send();
+
+                //når requsesten har kommet tilbake
+                request.onreadystatechange = function() {
+                    if (this.readyState == 4 && this.status == 200) {
+
+                        //parser json
+                        var JsonResp = JSON.parse(this.responseText);
+
+                        //sjekker om det har komment nye melinger
+                        if (lastJsonResp != null) {
+                            if (lastJsonResp.length == JsonResp.length) {
+                                return
+                            }
+                        }
+
+                        //sleter de gamle
+                        document.getElementById("AllMessages").innerHTML = "";
+
+                        //leger til alle melingene
+                        for (var i = 0; i < JsonResp.length; i++) {
+                            ThisMess = JsonResp[i];
+
+                            var post = ThisMess.Message;
+                            var user = ThisMess.Username;
+                            var cssClass = ThisMess.CssClass;
+
+                            addPost(cssClass, post, user)
+                        }
+
+                        lastJsonResp = JsonResp;
+
+                    }
+                };
+            }
+
+            //function som legger til en meling ti DOMen
+            function addPost(cssClass, post, user) {
+
+                //lager diven alt er inni
+                var messageDiv = document.createElement("DIV");    
+                messageDiv.setAttribute("class", cssClass);
+
+                //lager diven med navnet
+                var nameDiv = document.createElement("DIV");
+                nameDiv.innerHTML = user;
+                nameDiv.setAttribute("class", "name");
+                messageDiv.appendChild(nameDiv);
+
+                //gjør om bilder til bilder
+                let data = new RegExp("data:image\/.*");
+                let jpeg = new RegExp("http[^ ]*\.jpeg[^ ]*");
+                let jpg = new RegExp("http[^ ]*\.jpg[^ ]*");
+                let png = new RegExp("http[^ ]*\.png[^ ]*");
+
+                if (data.test(post) == true || jpeg.test(post) == true || jpg.test(post) == true || png.test(post) == true) {
+
+                    var img = document.createElement("img");
+                    img.setAttribute("src", post)
+                    img.setAttribute("alt", "klarte ikke å laste inn bildet: " + post)
+
+                    messageDiv.appendChild(img)
+                    document.getElementById("AllMessages").appendChild(messageDiv)
+
+                    return
+                }
+
+                // gjør om linker til linker
+                let link = new RegExp("http[^ ]*\.[^ ]*")
+                if (link.test(post) == true) {
+
+                    var a = document.createElement("a");
+                    a.setAttribute("href", post)
+                    a.innerHTML = post;
+
+                    messageDiv.appendChild(a)
+                    document.getElementById("AllMessages").appendChild(messageDiv)
+
+                    return
+                }
+
+                //lager diven med melingen
+                var postDiv = document.createElement("DIV");
+                var postP = document.createElement("P")
+                postP.innerHTML = post;
+                postDiv.appendChild(postP)
+                messageDiv.appendChild(postDiv)
+
+                //leger til i documentet
+                document.getElementById("AllMessages").appendChild(messageDiv)
+            }
+
+            loadMess();
+            setInterval(loadMess, 5000);
+
+            window.onload=toBottom;
+            function toBottom(){
+                console.log("ferdig å laste inn")
+                window.scrollTo(0, document.body.scrollHeight);
+            }
+
+            window.onerror=toBottom;
+
         </script>
 
     </body>
